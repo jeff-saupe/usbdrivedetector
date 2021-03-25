@@ -22,6 +22,7 @@ import net.samuelcampos.usbdrivedetector.process.CommandExecutor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,8 +34,8 @@ import java.util.regex.Pattern;
 @Slf4j
 public class LinuxStorageDeviceDetector extends AbstractStorageDeviceDetector {
 
-    private static final String CMD_DF = "df -l";
-    private static final Pattern command1Pattern = Pattern.compile("^(\\/[^ ]+)[^%]+%[ ]+(.+)$");
+    private static final String CMD_LSBLK = "lsblk -o LABEL,NAME | grep -v LABEL";
+    private static final Pattern commandPattern = Pattern.compile("^([a-zA-Z0-9]+)[^a-zA-Z0-9]+(.+)$");
 
     private static final String CMD_CHECK_USB = "udevadm info -q property -n ";
 
@@ -86,27 +87,23 @@ public class LinuxStorageDeviceDetector extends AbstractStorageDeviceDetector {
     public List<USBStorageDevice> getStorageDevices() {
         final ArrayList<USBStorageDevice> listDevices = new ArrayList<>();
 
-        try (final CommandExecutor commandExecutor = new CommandExecutor(CMD_DF)){
+        try (final CommandExecutor commandExecutor = new CommandExecutor(CMD_LSBLK)){
             commandExecutor.processOutput((String outputLine) -> {
-                final Matcher matcher = command1Pattern.matcher(outputLine);
+                final Matcher matcher = commandPattern.matcher(outputLine);
 
                 if (matcher.matches()) {
 
-                    // device name, like /dev/sdh1
-                    final String device = matcher.group(1);
+                    // label
+                    final String label = matcher.group(1);
 
-                    // mount point, like /media/usb
-                    final String rootPath = matcher.group(2);
+                    // device name, like /dev/sda1
+                    final String device = DISK_PREFIX + matcher.group(2).trim();
 
-                    if(device.startsWith(DISK_PREFIX)){
-                        final DiskInfo disk = new DiskInfo(device);
-                        disk.setMountPoint(rootPath);
-                        readDiskInfo(disk);
+                    final DiskInfo disk = new DiskInfo(device);
+                    readDiskInfo(disk);
 
-                        if(disk.isUSB()){
-                            getUSBDevice(disk.getMountPoint(), disk.getName(), disk.getDevice(), disk.getUuid())
-                                    .ifPresent(listDevices::add);
-                        }
+                    if(disk.isUSB()){
+                        listDevices.add(new USBStorageDevice(null, disk.getName(), disk.getDevice(), disk.getUuid()));
                     }
                 }
             });

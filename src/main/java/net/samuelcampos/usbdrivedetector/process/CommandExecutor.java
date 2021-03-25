@@ -16,6 +16,8 @@
 package net.samuelcampos.usbdrivedetector.process;
 
 import lombok.extern.slf4j.Slf4j;
+import net.samuelcampos.usbdrivedetector.utils.OSType;
+import net.samuelcampos.usbdrivedetector.utils.OSUtils;
 
 import java.io.*;
 import java.util.function.Consumer;
@@ -38,7 +40,15 @@ public class CommandExecutor implements Closeable {
         }
 
         this.command = command;
-        this.process = Runtime.getRuntime().exec(command);
+
+        if (OSUtils.getOsType() == OSType.LINUX) {
+            this.process = new ProcessBuilder("bash", "-c", command)
+                    .redirectErrorStream(true)
+                    .start();
+        } else {
+            this.process = Runtime.getRuntime().exec(command);
+        }
+
         this.input = new BufferedReader(new InputStreamReader(process.getInputStream()));
     }
 

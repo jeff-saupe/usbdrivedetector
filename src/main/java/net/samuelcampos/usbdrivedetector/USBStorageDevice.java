@@ -18,6 +18,8 @@ package net.samuelcampos.usbdrivedetector;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
+import net.samuelcampos.usbdrivedetector.utils.OSType;
+import net.samuelcampos.usbdrivedetector.utils.OSUtils;
 
 import java.io.File;
 import javax.swing.filechooser.FileSystemView;
@@ -37,14 +39,18 @@ public class USBStorageDevice {
     private final String uuid;
 
     public USBStorageDevice(final File rootDirectory, String deviceName, final String device, final String uuid) {
-        if (rootDirectory == null || !rootDirectory.isDirectory()) {
-            throw new IllegalArgumentException("Invalid root file!");
-        }
+        if (OSUtils.getOsType() != OSType.LINUX) {
+            if (rootDirectory == null || !rootDirectory.isDirectory()) {
+                throw new IllegalArgumentException("Invalid root file!");
+            }
 
-        this.rootDirectory = rootDirectory;
+            this.rootDirectory = rootDirectory;
 
-        if (deviceName == null || deviceName.isEmpty()) {
-            deviceName = rootDirectory.getName();
+            if (deviceName == null || deviceName.isEmpty()) {
+                deviceName = rootDirectory.getName();
+            }
+        } else {
+            this.rootDirectory = rootDirectory;
         }
         this.device = device;
         this.deviceName = deviceName;
